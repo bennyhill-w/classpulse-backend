@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── USERS ────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  title        String   @default("Mr.")
+  staffId      String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String   @default("teacher") // "teacher" | "admin"
+  trade        String?
+  subjects     String?
+  phone        String?
+  fcmToken     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  attendance    Attendance[]
+  classSessions ClassSession[]
+  timetable     Timetable[]
+  sentMessages  Message[]      @relation("SentMessages")
+  receivedMsgs  Message[]      @relation("ReceivedMessages")
+  notifications Notification[]
+}
+
+// ── ATTENDANCE ───────────────────────────────────────────────────
+model Attendance {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  date        DateTime  @default(now()) @db.Date
+  checkInAt   DateTime
+  checkOutAt  DateTime?
+  isLate      Boolean   @default(false)
+  lateMinutes Int?
+  method      String    // "gps" | "qr"
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime  @default(now())
+}
+
+// ── CLASS SESSIONS ───────────────────────────────────────────────
+model ClassSession {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  subject      String
+  trade        String
+  classYear    String
+  room         String
+  startedAt    DateTime
+  endedAt      DateTime?
+  durationMins Int?
+  date         DateTime  @default(now()) @db.Date
+  createdAt    DateTime  @default(now())
+}
+
+// ── TIMETABLE ────────────────────────────────────────────────────
+model Timetable {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  dayOfWeek Int      // 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri
+  startTime String   // "09:00"
+  endTime   String   // "10:00"
+  subject   String
+  trade     String
+  classYear String
+  room      String
+  createdAt DateTime @default(now())
+}
+
+// ── EVENTS (live feed) ───────────────────────────────────────────
+model Event {
+  id         String   @id @default(cuid())
+  userId     String?
+  type       String   // "checkin" | "checkout" | "class_start" | "class_end" | "late" | "absent" | "idle"
+  detail     String
+  badge      String
+  badgeClass String
+  createdAt  DateTime @default(now())
+}
+
+// ── ALERTS ───────────────────────────────────────────────────────
+model Alert {
+  id          String   @id @default(cuid())
+  type        String   // "danger" | "warn"
+  title       String
+  description String
+  teacherId   String?
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ── MESSAGES ─────────────────────────────────────────────────────
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentMessages",   fields: [senderId],    references: [id])
+  recipientId String
+  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  body        String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
