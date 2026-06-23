@@ -14,7 +14,7 @@ const server = http.createServer(app);
 // ── Socket.io setup ─────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5175",
     methods: ["GET", "POST"],
   },
 });
@@ -25,7 +25,7 @@ app.set("io", io);
 // ── Middleware ───────────────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:5175",
     credentials: true,
   }),
 );
@@ -46,7 +46,7 @@ app.get("/", (req, res) => {
 // ── Routes ───────────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/checkin", require("./routes/checkin"));
-// app.use('/api/teacher', require('./routes/teacher'))
+app.use("/api/teacher", require("./routes/teacher"));
 // app.use('/api/admin',   require('./routes/admin'))
 
 // ── 404 handler ─────────────────────────────────────────────────
