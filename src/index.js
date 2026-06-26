@@ -47,7 +47,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/teacher", require("./routes/teacher"));
-// app.use('/api/admin',   require('./routes/admin'))
+app.use('/api/admin',   require('./routes/admin'))
 
 // ── 404 handler ─────────────────────────────────────────────────
 app.use((req, res) => {
