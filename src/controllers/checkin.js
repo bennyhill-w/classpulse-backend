@@ -62,21 +62,21 @@ async function checkIn(req, res) {
       });
     }
 
-    // ── Already checked in today? ─────────────────────────────────
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const existing = await prisma.attendance.findFirst({
       where: {
         userId,
-        date: { gte: today },
+        checkOutAt: null, // only block if they haven't checked out yet
+      },
+      orderBy: {
+        checkInAt: "desc",
       },
     });
 
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: "You have already checked in today",
+        message: "You have already checked in and have not checked out yet.",
+        data: { attendance: existing },
       });
     }
 
@@ -208,21 +208,23 @@ async function checkIn(req, res) {
 async function checkOut(req, res) {
   try {
     const userId = req.user.id;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
+    // Find the most recent attendance record with no checkout
+    // Don't filter by date — find the latest unchecked-out record
     const attendance = await prisma.attendance.findFirst({
       where: {
         userId,
-        date: { gte: today },
         checkOutAt: null,
+      },
+      orderBy: {
+        checkInAt: "desc",
       },
     });
 
     if (!attendance) {
       return res.status(400).json({
         success: false,
-        message: "No check-in record found for today",
+        message: "No active check-in found. Please check in first",
       });
     }
 
@@ -276,14 +278,10 @@ async function checkOut(req, res) {
 // ── GET TODAY'S ATTENDANCE ────────────────────────────────────────
 async function getTodayAttendance(req, res) {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    // Get most recent attendance record regardless of date
     const attendance = await prisma.attendance.findFirst({
-      where: {
-        userId: req.user.id,
-        date: { gte: today },
-      },
+      where: { userId: req.user.id },
+      orderBy: { checkInAt: "desc" },
     });
 
     return res.status(200).json({
