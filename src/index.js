@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const http = require("http");
 const { Server } = require("socket.io");
+const { initCronJobs } = require("./services/cronJobs");
 
 // ── Load environment variables ──────────────────────────────────
 dotenv.config();
@@ -47,7 +48,25 @@ app.get("/", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/teacher", require("./routes/teacher"));
-app.use('/api/admin',   require('./routes/admin'))
+app.use("/api/admin", require("./routes/admin"));
+
+// ── TEST ENDPOINTS (remove before production) ─────────────────────
+if (process.env.NODE_ENV === "development") {
+  const {
+    detectIdleClasses,
+    flagAbsentTeachers,
+  } = require("./services/cronJobs");
+
+  app.post("/api/test/idle", async (req, res) => {
+    await detectIdleClasses(io, true); // forceRun = true
+    res.json({ success: true, message: "Idle detection ran" });
+  });
+
+  app.post("/api/test/absent", async (req, res) => {
+    await flagAbsentTeachers(io);
+    res.json({ success: true, message: "Absent flagging ran" });
+  });
+}
 
 // ── 404 handler ─────────────────────────────────────────────────
 app.use((req, res) => {
@@ -92,6 +111,9 @@ server.listen(PORT, () => {
 ║     G.T.C Agidingbi, Lagos             ║
 ╚════════════════════════════════════════╝
   `);
+
+  // Start background cron jobs
+  initCronJobs(io);
 });
 
 module.exports = { app, io };
