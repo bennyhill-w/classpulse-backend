@@ -292,7 +292,69 @@ async function detectLatePatterns(io) {
   }
 }
 
-// ── JOB 4: LIVE STATS REFRESH ────────────────────────────────────
+// ── JOB 4: AUTO CHECKOUT AT 5PM ──────────────────────────────────
+// Runs daily at 5:00 PM
+// Automatically checks out any teacher who forgot to check out
+async function autoCheckout(io) {
+  try {
+    const checkoutTime = new Date();
+
+    // Find all attendance records with no checkout
+    const uncheckedOut = await prisma.attendance.findMany({
+      where: { checkOutAt: null },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    for (const att of uncheckedOut) {
+      await prisma.attendance.update({
+        where: { id: att.id },
+        data: { checkOutAt: checkoutTime },
+      });
+
+      const teacherName =
+        `${att.user.title || ""} ${att.user.firstName} ${att.user.lastName}`.trim();
+
+      await prisma.event.create({
+        data: {
+          userId: att.user.id,
+          type: "checkout",
+          detail: "Auto checked out at 5:00 PM — no manual checkout recorded",
+          badge: "AUTO CHECKOUT",
+          badgeClass: "fb-purple",
+        },
+      });
+
+      if (io) {
+        io.to("admin_room").emit("teacher:checkout", {
+          teacherName,
+          time: formatTime(checkoutTime),
+          auto: true,
+        });
+      }
+
+      console.log(`[CRON] Auto checkout: ${teacherName}`);
+    }
+
+    if (uncheckedOut.length > 0) {
+      console.log(
+        `[CRON] Auto checkout complete — ${uncheckedOut.length} teacher(s) checked out`,
+      );
+    }
+  } catch (error) {
+    console.error("[CRON] Auto checkout error:", error);
+  }
+}
+
+// ── JOB 5: LIVE STATS REFRESH ────────────────────────────────────
 // Runs every 60 seconds during school hours
 // Pushes updated stats to all connected admin dashboards
 async function refreshStats(io) {
@@ -351,7 +413,13 @@ function initCronJobs(io) {
     detectLatePatterns(io);
   });
 
-  // Job 4 — Live stats refresh every 60 seconds
+  // Job 4 — Auto checkout at 5:00 PM every weekday
+  cron.schedule("0 17 * * 1-5", () => {
+    console.log("[CRON] Running auto checkout...");
+    autoCheckout(io);
+  });
+
+  // Job 5 — Live stats refresh every 60 seconds
   cron.schedule("* * * * *", () => {
     refreshStats(io);
   });
@@ -360,6 +428,7 @@ function initCronJobs(io) {
   console.log("[CRON] - Idle detection:     every 5 minutes");
   console.log("[CRON] - Absent flagging:    daily at 9:00 AM");
   console.log("[CRON] - Late patterns:      daily at 9:30 AM");
+  console.log("[CRON] - Auto checkout:      daily at 5:00 PM");
   console.log("[CRON] - Stats refresh:      every 60 seconds");
 }
 
@@ -370,4 +439,5 @@ module.exports = {
   flagAbsentTeachers,
   detectLatePatterns,
   refreshStats,
+  autoCheckout,
 };

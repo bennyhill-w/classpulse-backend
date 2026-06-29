@@ -55,6 +55,7 @@ if (process.env.NODE_ENV === "development") {
   const {
     detectIdleClasses,
     flagAbsentTeachers,
+    autoCheckout,
   } = require("./services/cronJobs");
 
   app.post("/api/test/idle", async (req, res) => {
@@ -65,6 +66,11 @@ if (process.env.NODE_ENV === "development") {
   app.post("/api/test/absent", async (req, res) => {
     await flagAbsentTeachers(io);
     res.json({ success: true, message: "Absent flagging ran" });
+  });
+
+  app.post("/api/test/autocheckout", async (req, res) => {
+    await autoCheckout(io);
+    res.json({ success: true, message: "Auto checkout ran" });
   });
 }
 

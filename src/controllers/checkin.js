@@ -80,6 +80,15 @@ async function checkIn(req, res) {
       });
     }
 
+    // Block check-in after school closing hour (3 PM)
+    const checkInHour = new Date().getUTCHours() + 1; // WAT = UTC+1
+    if (checkInHour >= 15) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in is closed. School hours ended at 3:00 PM.",
+      });
+    }
+
     // ── GPS VALIDATION ────────────────────────────────────────────
     if (method === "gps") {
       if (!lat || !lng) {
